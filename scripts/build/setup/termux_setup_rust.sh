@@ -5,8 +5,6 @@ termux_setup_rust() {
 		CARGO_TARGET_NAME=$TERMUX_ARCH-linux-android
 	fi
 
-	export RUSTFLAGS="-C link-arg=-Wl,-rpath=$TERMUX_PREFIX/lib -C link-arg=-Wl,--enable-new-dtags"
-
 	if [ "$TERMUX_ON_DEVICE_BUILD" = "true" ]; then
 		if [ "$(dpkg-query -W -f '${db:Status-Status}\n' rust 2>/dev/null)" != "installed" ]; then
 			echo "Package 'rust' is not installed."
@@ -34,9 +32,11 @@ termux_setup_rust() {
 
 	curl https://sh.rustup.rs -sSf > $TERMUX_PKG_TMPDIR/rustup.sh
 
-	local _TOOLCHAIN_VERSION=$(bash -c ". $TERMUX_SCRIPTDIR/packages/rust/build.sh; echo \$TERMUX_PKG_VERSION")
+	if [ -z "${TERMUX_RUST_VERSION-}" ]; then
+		TERMUX_RUST_VERSION=$(bash -c ". $TERMUX_SCRIPTDIR/packages/rust/build.sh; echo \$TERMUX_PKG_VERSION")
+	fi
 
-	sh $TERMUX_PKG_TMPDIR/rustup.sh	-y --default-toolchain $_TOOLCHAIN_VERSION
+	sh $TERMUX_PKG_TMPDIR/rustup.sh	-y --default-toolchain $TERMUX_RUST_VERSION
 	export PATH=$HOME/.cargo/bin:$PATH
 
 	rustup target add $CARGO_TARGET_NAME

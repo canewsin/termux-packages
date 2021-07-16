@@ -17,7 +17,7 @@ fi
 
 if [ -f "${BASEDIR}/github-projects.txt" ]; then
 	for line in $(grep -P '^[a-z0-9]' "${BASEDIR}/github-projects.txt"); do
-		unset package project version_regexp
+		unset package project version_regexp termux_version termux_epoch latest_version
 		package=$(echo "$line" | cut -d'|' -f1)
 		project=$(echo "$line" | cut -d'|' -f2)
 		version_regexp=$(echo "$line" | cut -d'|' -f3-)
@@ -28,10 +28,18 @@ if [ -f "${BASEDIR}/github-projects.txt" ]; then
 		fi
 
 		# Our local version of package.
-		termux_version=$(set +e +u;. "${BASEDIR}/../../packages/${package}/build.sh" 2>/dev/null; echo "$TERMUX_PKG_VERSION" | cut -d: -f2-)
+		termux_version=$(set +e +u;. "${BASEDIR}/../../packages/${package}/build.sh" 2>/dev/null; echo "$TERMUX_PKG_VERSION")
+		termux_epoch="$(echo "$termux_version" | cut -d: -f1)"
+		termux_version=$(echo "$termux_version" | cut -d: -f2-)
+		if [ "$termux_version" == "$termux_epoch" ]; then
+			# No epoch set.
+			termux_epoch=""
+		else
+			termux_epoch+=":"
+		fi
 
 		# Latest version is the current release tag on Github.
-		latest_version=$(curl --silent -H "Authorization: token ${GITHUB_API_TOKEN}" "https://api.github.com/repos/${project}/releases/latest" | jq -r .tag_name)
+		latest_version=$(curl --silent --location -H "Authorization: token ${GITHUB_API_TOKEN}" "https://api.github.com/repos/${project}/releases/latest" | jq -r .tag_name)
 
 		# Remove leading 'v' which is common in version tag.
 		latest_version=${latest_version#v}
@@ -47,7 +55,7 @@ if [ -f "${BASEDIR}/github-projects.txt" ]; then
 				echo "Package '${package}' needs update to '${latest_version}'."
 			else
 				echo "Updating '${package}' to '${latest_version}'."
-				sed -i "s/^\(TERMUX_PKG_VERSION=\)\(.*\)\$/\1${latest_version}/g" "${BASEDIR}/../../packages/${package}/build.sh"
+				sed -i "s/^\(TERMUX_PKG_VERSION=\)\(.*\)\$/\1${termux_epoch}${latest_version}/g" "${BASEDIR}/../../packages/${package}/build.sh"
 				sed -i "/TERMUX_PKG_REVISION=/d" "${BASEDIR}/../../packages/${package}/build.sh"
 				echo n | "${BASEDIR}/../bin/update-checksum" "$package"
 
@@ -55,7 +63,7 @@ if [ -f "${BASEDIR}/github-projects.txt" ]; then
 				if "${BASEDIR}/../run-docker.sh" ./build-package.sh -a aarch64 -I "$package"; then
 					if [ "$GIT_COMMIT_PACKAGES" = "true" ]; then
 						git add "${BASEDIR}/../../packages/${package}"
-						git commit -m "${package}: update to ${latest_version}"
+						git commit -m "$(echo -e "${package}: update to ${latest_version}\n\nThis commit has been automatically submitted by Github Actions.")"
 					fi
 
 					if [ "$GIT_PUSH_PACKAGES" = "true" ]; then
