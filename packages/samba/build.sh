@@ -2,22 +2,34 @@ TERMUX_PKG_HOMEPAGE=https://www.samba.org/
 TERMUX_PKG_DESCRIPTION="SMB/CIFS fileserver"
 TERMUX_PKG_LICENSE="GPL-3.0"
 TERMUX_PKG_MAINTAINER="@termux"
-TERMUX_PKG_VERSION=4.14.9
+TERMUX_PKG_VERSION="4.25.1"
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=https://download.samba.org/pub/samba/samba-${TERMUX_PKG_VERSION}.tar.gz
-TERMUX_PKG_SHA256=7fb11818ef7f9bb817a3b21019358b1469aec98799057cc9e55933563361c409
-TERMUX_PKG_DEPENDS="libbsd, libcap, libcrypt, libgnutls, libiconv, libicu, libpopt, libtalloc, libtirpc, ncurses, openssl, readline, zlib"
+TERMUX_PKG_SHA256=7f367545bca69aa96897628f82f0f04d4b66b3bcb36cb978b9bb952c4b4c428d
+TERMUX_PKG_DEPENDS="krb5, libandroid-execinfo, libandroid-spawn, libbsd, libcap, libcrypt, libgnutls, libiconv, libicu, libpopt, libtalloc, libtasn1, libtirpc, ncurses, openssl, readline, tdb-tools, zlib"
 TERMUX_PKG_BUILD_DEPENDS="e2fsprogs"
 TERMUX_PKG_BUILD_IN_SRC=true
 
+# These files are already present in the package tdb-tools
+TERMUX_PKG_RM_AFTER_INSTALL="
+bin/tdbbackup
+bin/tdbdump
+bin/tdbrestore
+bin/tdbtool
+share/man/man8/tdbbackup.8.gz
+share/man/man8/tdbdump.8.gz
+share/man/man8/tdbrestore.8.gz
+share/man/man8/tdbtool.8.gz
+share/man/man3/talloc.3.gz
+"
+
+termux_step_pre_configure() {
+	CPPFLAGS+=" -D_FILE_OFFSET_BITS=64"
+	LDFLAGS+=" -landroid-spawn"
+	export PYTHONHASHSEED=1
+}
+
 termux_step_configure() {
-	:
-}
-
-termux_step_make() {
-	:
-}
-
-termux_step_make_install() {
 	local _auth_modules='auth_server,auth_netlogond,auth_script'
 	local _pdb_modules='pdb_tdbsam,pdb_smbpasswd,pdb_wbc_sam'
 	local _vfs_modules='vfs_fake_perms,!vfs_recycle,!vfs_btrfs,!vfs_glusterfs_fuse'
@@ -74,13 +86,17 @@ Checking for the maximum value of the 'time_t' type: NO
 Checking whether the realpath function allows a NULL argument: OK
 Checking for ftruncate extend: OK
 getcwd takes a NULL argument: OK
+Checking for readlink breakage: NO
+Checking for gnutls fips mode support: NO
+Checking whether the WRFILE -keytab is supported: OK
 EOF
 
+	local _samba_ldflags="${LDFLAGS//-L$TERMUX_PREFIX\/lib/}"
 	USING_SYSTEM_ASN1_COMPILE=1 ASN1_COMPILE=/usr/bin/asn1_compile \
 	USING_SYSTEM_COMPILE_ET=1 COMPILE_ET=/usr/bin/compile_et \
-	CFLAGS="-D__ANDROID_API__=24 -D__USE_FILE_OFFSET64=1" \
+	CFLAGS="$CFLAGS" LINKFLAGS="$CFLAGS $_samba_ldflags" \
 	./buildtools/bin/waf configure \
-		--jobs="$TERMUX_MAKE_PROCESSES" \
+		--jobs="$TERMUX_PKG_MAKE_PROCESSES" \
 		--bundled-libraries='!asn1_compile,!compile_et' \
 		--cross-compile \
 		--cross-answers=cross-answers.txt \
@@ -105,7 +121,6 @@ EOF
 		--without-ads \
 		--without-automount \
 		--without-dmapi \
-		--without-dnsupdate \
 		--without-fam \
 		--without-gettext \
 		--with-gpfs=/dev/null \
@@ -115,33 +130,76 @@ EOF
 		--without-ldb-lmdb \
 		--without-libarchive \
 		--without-lttng \
-		--without-ntvfs-fileserver \
 		--without-pam \
 		--without-quotas \
 		--without-regedit \
+		--with-system-mitkrb5 \
 		--without-systemd \
 		--without-utmp \
 		--without-winbind \
 		--with-shared-modules="${_vfs_modules},${_pdb_modules},${_auth_modules}" \
-		--with-static-modules='!auth_winbind'
+		--with-static-modules='!auth_winbind' ||
 		# --disable-fault-handling \
 		# --disable-rpath-private-install \
 		# --with-logfilebase="$TERMUX_PREFIX/tmp/log/samba" \
+		(cat cross-answers.txt | grep UNKNOWN && return 1)
+}
 
-	./buildtools/bin/waf install --jobs="$TERMUX_MAKE_PROCESSES"
 
+termux_step_make() {
+	./buildtools/bin/waf build --jobs="$TERMUX_PKG_MAKE_PROCESSES"
+}
+
+termux_step_make_install() {
+	./buildtools/bin/waf install --jobs="$TERMUX_PKG_MAKE_PROCESSES"
+}
+
+termux_step_post_make_install() {
+	install -Dm700 -t "$TERMUX_PREFIX/bin" \
+		"$TERMUX_PKG_SRCDIR/examples/scripts/nmb/findsmb"
 	mkdir -p "$TERMUX_PREFIX/share/doc/samba"
 	sed -e "s|@TERMUX_PREFIX@|${TERMUX_PREFIX}|g" \
 		"$TERMUX_PKG_BUILDER_DIR/smb.conf.example.in" \
 		> "$TERMUX_PREFIX/share/doc/samba/smb.conf.example"
+
+	# Waf may leave already-correct shared library symlinks untouched.
+	# Recreate them so their mtimes are newer than the package build timestamp
+	# and termux_step_copy_into_massagedir() includes them in the .deb.
+	local library soname unversioned
+	local libraries=(
+		libdcerpc-binding.so.0.0.1
+		libdcerpc-server-core.so.0.0.1
+		libndr-krb5pac.so.0.0.1
+		libndr-nbt.so.0.0.1
+		libndr-standard.so.0.0.1
+		libndr.so.6.1.0
+		libnetapi.so.1.0.0
+		libsamba-errors.so.1.0.0
+		libsamba-passdb.so.0.30.0
+		libsamba-util.so.0.0.1
+		libsmbclient.so.0.8.1
+		libsmbconf.so.0.0.1
+		libwbclient.so.0.16
+	)
+
+	for library in "${libraries[@]}"; do
+		soname="$($READELF -d "$TERMUX_PREFIX/lib/$library" | \
+			sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')"
+		if [[ -z "$soname" ]]; then
+			termux_error_exit "Failed to determine SONAME for $library"
+		fi
+		unversioned="${soname%%.so.*}.so"
+		ln -sf "$library" "$TERMUX_PREFIX/lib/$soname"
+		ln -sf "$library" "$TERMUX_PREFIX/lib/$unversioned"
+	done
 }
 
 termux_step_post_massage() {
 	# keep empty dirs which were deleted in massage
-	mkdir -p "$TERMUX_PKG_MASSAGEDIR/$TERMUX_PREFIX/var/lib/samba/bind-dns" "$TERMUX_PKG_MASSAGEDIR/$TERMUX_PREFIX/var/lib/samba/private"
+	mkdir -p "var/lib/samba/bind-dns" "var/lib/samba/private"
 	for dir in cache lock log run; do
-		mkdir -p "$TERMUX_PKG_MASSAGEDIR/$TERMUX_PREFIX/var/$dir/samba"
+		mkdir -p "var/$dir/samba"
 	done
 	# 755 - as opposed to 700 - because testparm throws up a warning otherwise
-	chmod 755 "$TERMUX_PKG_MASSAGEDIR/$TERMUX_PREFIX/var/lock/samba" "$TERMUX_PKG_MASSAGEDIR/$TERMUX_PREFIX/var/lib/samba" "$TERMUX_PKG_MASSAGEDIR/$TERMUX_PREFIX/var/cache/samba"
+	chmod 755 "var/lock/samba" "var/lib/samba" "var/cache/samba"
 }

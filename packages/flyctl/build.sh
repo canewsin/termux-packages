@@ -1,24 +1,21 @@
 TERMUX_PKG_HOMEPAGE=https://fly.io
 TERMUX_PKG_DESCRIPTION="Command line tools for fly.io services"
 TERMUX_PKG_LICENSE="Apache-2.0"
-TERMUX_PKG_MAINTAINER="Yaksh Bariya <yakshbari4@gmail.com>"
-TERMUX_PKG_VERSION=0.0.250
-TERMUX_PKG_SRCURL=https://github.com/superfly/flyctl/archive/v$TERMUX_PKG_VERSION.tar.gz
-TERMUX_PKG_SHA256=396f60f6f536aa4f4e9590ed5ae584bf5f9c194145f3d0d12cf4ac8da5b6b70e
+TERMUX_PKG_MAINTAINER="Yaksh Bariya <thunder-coding@termux.dev>"
+TERMUX_PKG_VERSION="0.5.10"
+TERMUX_PKG_SRCURL=https://github.com/superfly/flyctl/archive/refs/tags/v$TERMUX_PKG_VERSION.tar.gz
+TERMUX_PKG_SHA256=71b5ab222980ac3d6d10e5f65a26af660d4ff3ac996fa6b918345ca515f4bc80
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_BUILD_IN_SRC=true
-TERMUX_PKG_BLACKLISTED_ARCHES="i686, arm"
-
+TERMUX_PKG_EXCLUDED_ARCHES="i686, arm"
 
 termux_step_post_get_source() {
 	termux_setup_golang
-	export GOPATH=$TERMUX_PKG_SRCDIR/go
-	go get
-	chmod +w $GOPATH -R
+	go mod tidy
+	go mod vendor
 }
 
 termux_step_make() {
-	export GOPATH=$TERMUX_PKG_SRCDIR/go
 	go build -o bin/flyctl
 }
 

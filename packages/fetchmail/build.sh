@@ -1,13 +1,13 @@
 TERMUX_PKG_HOMEPAGE=https://www.fetchmail.info/
 TERMUX_PKG_DESCRIPTION="A remote-mail retrieval utility"
 TERMUX_PKG_LICENSE="GPL-2.0"
-TERMUX_PKG_MAINTAINER="Leonid Pliushch <leonid.pliushch@gmail.com>"
-TERMUX_PKG_VERSION=6.4.22
+TERMUX_PKG_LICENSE_FILE="COPYING"
+TERMUX_PKG_MAINTAINER="@termux"
+TERMUX_PKG_VERSION="6.6.9"
 TERMUX_PKG_SRCURL=https://sourceforge.net/projects/fetchmail/files/branch_${TERMUX_PKG_VERSION:0:3}/fetchmail-$TERMUX_PKG_VERSION.tar.xz
-TERMUX_PKG_SHA256=cc6818bd59435602169fa292d6d163d56b21c7f53112829470a3aceabe612c84
-TERMUX_PKG_DEPENDS="libcrypt, openssl"
+TERMUX_PKG_SHA256=3dfc47192e76099b5614f2b2a42198cb41fa05d7ca9b5073e08c051e9be81435
+TERMUX_PKG_AUTO_UPDATE=true
+TERMUX_PKG_DEPENDS="openssl"
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="--with-ssl=$TERMUX_PREFIX"
-
-termux_step_pre_configure() {
-	export LIBS="-llog"
-}
+TERMUX_PKG_RM_AFTER_INSTALL="lib/python${TERMUX_PYTHON_VERSION}/site-packages/__pycache__"
+TERMUX_PKG_PYTHON_COMMON_BUILD_DEPS="wheel"

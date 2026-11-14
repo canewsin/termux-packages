@@ -1,0 +1,51 @@
+--- a/process.c
++++ b/process.c
+@@ -4137,6 +4137,20 @@ rb_fork_async_signal_safe(int *status,
+     return result;
+ }
+ 
++#ifdef __ANDROID__
++void __rb_atfork_prepare() {
++    rb_thread_release_fork_lock();
++}
++
++void __rb_atfork_parent() {
++    // NOOP
++}
++
++void __rb_atfork_child() {
++    // NOOP
++}
++#endif
++
+ rb_pid_t
+ rb_fork_ruby(int *status)
+ {
+@@ -4149,6 +4163,12 @@ rb_fork_ruby(int *status)
+     int try_gc = 1, err = 0;
+     struct child_handler_disabler_state old;
+ 
++#ifdef __ANDROID__
++    if ((err = pthread_atfork(__rb_atfork_prepare, __rb_atfork_parent, __rb_atfork_child))) {
++        rb_bug_errno("pthread_atfork", err);
++    }
++#endif
++
+     do {
+         prefork();
+ 
+@@ -4162,7 +4182,14 @@ rb_fork_ruby(int *status)
+         }
+ 
+         disable_child_handler_fork_parent(&old); /* yes, bad name */
++#ifdef __ANDROID__
++        /* the lock was released in the prepare hook registered at pthread_atfork */
++        if (pid == 0) {
++            rb_thread_reset_fork_lock();
++        }
++#else
+         release_fork_lock_after_fork(pid);
++#endif
+         after_fork_ruby(pid);
+ 
+         /* repeat while fork failed but retryable */

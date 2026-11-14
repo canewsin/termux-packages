@@ -1,8 +1,6 @@
-
-diff -uNr ./deps/uv/src/unix/fs.c ./deps/uv/src/unix/fs.c.mod
---- ./deps/uv/src/unix/fs.c	2021-06-03 07:15:30.000000000 +0530
-+++ ./deps/uv/src/unix/fs.c.mod	2021-06-18 20:05:49.675642773 +0530
-@@ -1247,6 +1247,7 @@
+--- a/deps/uv/src/unix/fs.c
++++ b/deps/uv/src/unix/fs.c
+@@ -1354,6 +1354,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
  #endif  /* !__linux__ */
    }
  
@@ -10,11 +8,11 @@ diff -uNr ./deps/uv/src/unix/fs.c ./deps/uv/src/unix/fs.c.mod
  #ifdef FICLONE
    if (req->flags & UV_FS_COPYFILE_FICLONE ||
        req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-@@ -1267,6 +1268,7 @@
+@@ -1373,6 +1374,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
+     err = UV_ENOSYS;
      goto out;
    }
- #endif
 +#endif
+ #endif
  
    bytes_to_send = src_statsbuf.st_size;
-   in_offset = 0;

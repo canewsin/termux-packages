@@ -2,12 +2,14 @@ TERMUX_PKG_HOMEPAGE=https://github.com/hanslub42/rlwrap
 TERMUX_PKG_DESCRIPTION="Wrapper using readline to enable editing of keyboard input for commands"
 TERMUX_PKG_LICENSE="GPL-2.0"
 TERMUX_PKG_MAINTAINER="@termux"
-TERMUX_PKG_VERSION=0.45.2
-TERMUX_PKG_SRCURL=https://fossies.org/linux/privat/rlwrap-${TERMUX_PKG_VERSION}.tar.xz
-TERMUX_PKG_SHA256=feb49c4ffa79f78d2439b4ffa933c77eed57eeb614ab84d967b8d692e0f6beb1
+TERMUX_PKG_VERSION="0.48"
+TERMUX_PKG_SRCURL=https://github.com/hanslub42/rlwrap/releases/download/v${TERMUX_PKG_VERSION}/rlwrap-${TERMUX_PKG_VERSION}.tar.gz
+TERMUX_PKG_SHA256=cdf69074a216a8284574dddd145dd046c904ad5330a616e0eed53c9043f2ecbc
 TERMUX_PKG_DEPENDS="ncurses, readline"
+TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
+--without-libptytty
 ac_cv_func_grantpt=yes
 ac_cv_func_unlockpt=yes
 ac_cv_lib_util_openpty=no

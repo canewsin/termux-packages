@@ -1,31 +1,28 @@
 TERMUX_PKG_HOMEPAGE="https://github.com/sumneko/lua-language-server"
 TERMUX_PKG_DESCRIPTION="Sumneko Lua Language Server coded in Lua"
 TERMUX_PKG_LICENSE="MIT"
-TERMUX_PKG_MAINTAINER="MrAdityaAlok <dev.aditya.alok@gmail.com>"
-TERMUX_PKG_VERSION=2.4.6
-TERMUX_PKG_SRCURL=https://github.com/sumneko/lua-language-server.git
+TERMUX_PKG_MAINTAINER="Joshua Kahn <tom@termux.dev>"
+TERMUX_PKG_VERSION="3.19.2"
 TERMUX_PKG_GIT_BRANCH="${TERMUX_PKG_VERSION}"
-TERMUX_PKG_BUILD_DEPENDS="libandroid-spawn"
+TERMUX_PKG_SRCURL="git+https://github.com/sumneko/lua-language-server"
+# `lua-language-server` links against libbfd,
+# remember to rebuild it when updating `binutils`.
+TERMUX_PKG_DEPENDS="binutils, libandroid-spawn, libc++"
 TERMUX_PKG_HOSTBUILD=true
 TERMUX_PKG_BUILD_IN_SRC=true
+TERMUX_PKG_AUTO_UPDATE=true
 
-# no cpu_relax support present for these archs.
-# https://github.com/actboy168/bee.lua/blob/32f65b92739fa236d87fc1b2e7617470d47f0355/bee/thread/spinlock.h#L14
-TERMUX_PKG_BLACKLISTED_ARCHES="arm,i686"
-
-_patch() {
+_patch_on_device() {
 	if [ "${TERMUX_ON_DEVICE_BUILD}" = true ]; then
-		current_dir=$(pwd)
-
-		cd "${TERMUX_PKG_SRCDIR}"
-		patch --silent -p1 <"${TERMUX_PKG_BUILDER_DIR}"/android.patch.ondevice.beforehostbuild
-
-		cd "${current_dir}"
+		(
+			cd "${TERMUX_PKG_SRCDIR}"
+			patch --silent -p1 < "${TERMUX_PKG_BUILDER_DIR}"/android.diff
+		)
 	fi
 }
 
 termux_step_host_build() {
-	_patch
+	_patch_on_device
 	termux_setup_ninja
 
 	mkdir 3rd
@@ -36,10 +33,22 @@ termux_step_host_build() {
 }
 
 termux_step_make() {
+	termux_setup_ninja
+
+	CFLAGS+=" -DBEE_ENABLE_FILESYSTEM"     # without this, it tries to link against its own filesystem lib and fails.
+	CFLAGS+=" -Wno-unknown-warning-option" # for -Wno-maybe-uninitialized argument.
+
 	sed \
 		-e "s%\@FLAGS\@%${CFLAGS} ${CPPFLAGS}%g" \
 		-e "s%\@LDFLAGS\@%${LDFLAGS}%g" \
 		"${TERMUX_PKG_BUILDER_DIR}"/make.lua.diff | patch --silent -p1
+
+	patch="$TERMUX_PKG_BUILDER_DIR/force-cast-unw_context_t.diff"
+	echo "Applying patch: $(basename "$patch")"
+	test -f "$patch" && {
+		patch --silent -p1 -d "$TERMUX_PKG_SRCDIR/3rd/bee.lua/bee/crash/linux" < "$patch"
+		patch --silent -p1 -d "$TERMUX_PKG_SRCDIR/3rd/luamake/bee.lua/bee/crash/linux" < "$patch"
+	}
 
 	"${TERMUX_PKG_HOSTBUILD_DIR}"/3rd/luamake/luamake \
 		-cc "${CC}" \
@@ -47,31 +56,26 @@ termux_step_make() {
 }
 
 termux_step_make_install() {
-	local INSTALL_DIR="${TERMUX_PREFIX}/lib/${TERMUX_PKG_NAME}"
+	local datadir="${TERMUX_PREFIX}/share/${TERMUX_PKG_NAME}"
 
-	cat >"${TERMUX_PREFIX}/bin/${TERMUX_PKG_NAME}" <<-EOF
+	cat > "${TERMUX_PREFIX}/bin/${TERMUX_PKG_NAME}" <<- EOF
 		#!${TERMUX_PREFIX}/bin/bash
+		TMPPATH="\$(mktemp -d "${TERMUX_PREFIX}/tmp/${TERMUX_PKG_NAME}.XXXX")"
 
-		# After action of termux-elf-cleaner lua-language-server's binary(ELF) is unable to
-		# determine its version, so provide it manually.
-		if [ "\$1" = "--version" ]; then
-			echo "${TERMUX_PKG_NAME}: ${TERMUX_PKG_VERSION}"
-		else 
-			TMPPATH=\$(mktemp -d "${TERMUX_PREFIX}/tmp/${TERMUX_PKG_NAME}.XXXX")
-
-			exec ${INSTALL_DIR}/bin/Android/${TERMUX_PKG_NAME} \\
-				--logpath="\${TMPPATH}/log" \\
-				--metapath="\${TMPPATH}/meta" \\
-				"\${@}"
-		fi
-
+		exec ${datadir}/bin/${TERMUX_PKG_NAME} \\
+		--logpath="\${TMPPATH}/log" \\
+		--metapath="\${TMPPATH}/meta" \\
+		"\${@}"
 	EOF
 
-	chmod 744 "${TERMUX_PREFIX}/bin/${TERMUX_PKG_NAME}"
+	chmod 0700 "${TERMUX_PREFIX}/bin/${TERMUX_PKG_NAME}"
 
-	install -Dm744 -t "${INSTALL_DIR}"/bin/Android ./bin/Android/"${TERMUX_PKG_NAME}"
-	install -Dm644 -t "${INSTALL_DIR}" ./{main,debugger}.lua
-	install -Dm644 -t "${INSTALL_DIR}"/bin/Android ./bin/Android/main.lua
+	install -Dm700 -t "${datadir}"/bin ./bin/"${TERMUX_PKG_NAME}"
+	install -Dm600 -t "${datadir}" ./{main,debugger}.lua
+	install -Dm600 -t "${datadir}"/bin ./bin/main.lua
 
-	cp -r ./script ./meta ./locale "${INSTALL_DIR}"
+	# needed for --version
+	install -Dm600 -t "${datadir}" ./changelog.md
+
+	cp -r ./script ./meta ./locale "${datadir}"
 }

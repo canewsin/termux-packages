@@ -1,21 +1,15 @@
-TERMUX_PKG_HOMEPAGE=https://vtm.netxs.online/
+TERMUX_PKG_HOMEPAGE=https://github.com/directvt/vtm
 TERMUX_PKG_DESCRIPTION="Terminal multiplexer with TUI window manager and multi-party session sharing"
 TERMUX_PKG_LICENSE="MIT"
 TERMUX_PKG_MAINTAINER="@termux"
-TERMUX_PKG_VERSION=0.5.15
-TERMUX_PKG_REVISION=1
-TERMUX_PKG_SRCURL=https://github.com/netxs-group/vtm/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz
-TERMUX_PKG_SHA256=fa18ae2f1eee9615c6e0df5be4b248fb15268c5e7401380f129ccee8cb9254f0
-TERMUX_PKG_DEPENDS="libandroid-spawn"
-TERMUX_PKG_BUILD_IN_SRC=true
+TERMUX_PKG_VERSION="2026.10.12"
+TERMUX_PKG_SRCURL="https://github.com/directvt/vtm/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz"
+TERMUX_PKG_SHA256=48ef3b8cbd5a9479049791378787bd31ab28621c842f8997391240109d40e72d
+TERMUX_PKG_DEPENDS="freetype, harfbuzz, libc++, lua54, lunasvg"
+TERMUX_PKG_BUILD_DEPENDS="libandroid-spawn, stb"
+TERMUX_PKG_AUTO_UPDATE=true
 
 termux_step_pre_configure() {
-	TERMUX_PKG_SRCDIR+=/src
 	CXXFLAGS+=" -pthread"
-	LDFLAGS+=" -landroid-spawn"
-}
-
-termux_step_install_license() {
-	install -Dm600 -t $TERMUX_PREFIX/share/doc/vtm \
-		$TERMUX_PKG_SRCDIR/../LICENSE
+	export STB_INCLUDE_DIR="$TERMUX__PREFIX__INCLUDE_DIR/stb"
 }

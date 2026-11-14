@@ -1,12 +1,13 @@
 TERMUX_PKG_HOMEPAGE=https://restic.net/
 TERMUX_PKG_DESCRIPTION="Restic's REST backend API server"
 TERMUX_PKG_LICENSE="BSD 2-Clause"
-TERMUX_PKG_MAINTAINER="Leonid Pliushch <leonid.pliushch@gmail.com>"
-TERMUX_PKG_VERSION=0.10.0
+TERMUX_PKG_MAINTAINER="@termux"
+TERMUX_PKG_VERSION="0.14.0"
 TERMUX_PKG_REVISION=2
-TERMUX_PKG_SRCURL=https://github.com/restic/rest-server/archive/v${TERMUX_PKG_VERSION}.tar.gz
-TERMUX_PKG_SHA256=d109cf9e9c3f36c9c8eb6d4a2bd530c5dfcd62b11687d93034e2edc0fdecf479
+TERMUX_PKG_SRCURL=https://github.com/restic/rest-server/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz
+TERMUX_PKG_SHA256=8b3f91d561819ba9bce454505958fcca6d61ecd12e10086954ebfc92ba163ba4
 TERMUX_PKG_BUILD_IN_SRC=true
+TERMUX_PKG_AUTO_UPDATE=true
 
 termux_step_make() {
 	termux_setup_golang

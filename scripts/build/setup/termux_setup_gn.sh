@@ -1,6 +1,6 @@
 termux_setup_gn() {
 	termux_setup_ninja
-	local GN_COMMIT=de86ec4176235871a7cb335756987e41246dae4a
+	local GN_COMMIT=e44942b445d9376451f7d519965dae036efde5bc
 	local GN_TARFILE=$TERMUX_COMMON_CACHEDIR/gn_$GN_COMMIT.tar.gz
 	local GN_SOURCE=https://gn.googlesource.com/gn/+archive/$GN_COMMIT.tar.gz
 
@@ -19,32 +19,41 @@ termux_setup_gn() {
 				$GN_SOURCE \
 				$GN_TARFILE \
 				SKIP_CHECKSUM
-			mkdir -p $GN_FOLDER
-			tar xf $GN_TARFILE -C $GN_FOLDER
+			rm -rf "$GN_FOLDER".tmp
+			mkdir -p "$GN_FOLDER".tmp
+			tar xf $GN_TARFILE -C "$GN_FOLDER".tmp
 			local LAST_PWD=$(pwd)
-			cd $GN_FOLDER
+			cd "$GN_FOLDER".tmp
 			(
 				unset CC CXX CFLAGS CXXFLAGS LD LDFLAGS AR AS CPP OBJCOPY OBJDUMP RANLIB READELF STRIP
+				export CC="clang-${TERMUX_HOST_LLVM_MAJOR_VERSION}"
+				export CXX="clang++-${TERMUX_HOST_LLVM_MAJOR_VERSION}"
+				export LD="clang++-${TERMUX_HOST_LLVM_MAJOR_VERSION}"
+				export PATH="/usr/bin:$(echo -n $(tr ':' '\n' <<< "$PATH" | grep -v "^$TERMUX_PREFIX/bin$") | tr ' ' ':')"
 				./build/gen.py \
 					--no-last-commit-position
 				cat <<-EOF >./out/last_commit_position.h
 					#ifndef OUT_LAST_COMMIT_POSITION_H_
 					#define OUT_LAST_COMMIT_POSITION_H_
-					#define LAST_COMMIT_POSITION_NUM 1
-					#define LAST_COMMIT_POSITION "${GN_COMMIT}"
+					#define LAST_COMMIT_POSITION_NUM 2405
+					#define LAST_COMMIT_POSITION "2405 ${GN_COMMIT:0:12}"
 					#endif  // OUT_LAST_COMMIT_POSITION_H_
 				EOF
 				ninja -C out/
 			)
 			cd $LAST_PWD
+			mv "$GN_FOLDER".tmp "$GN_FOLDER"
 		fi
 		export PATH=$GN_FOLDER/out:$PATH
 	else
-		if [ "$(dpkg-query -W -f '${db:Status-Status}\n' gn 2>/dev/null)" != "installed" ]; then
+		if [[ "$TERMUX_APP_PACKAGE_MANAGER" = "apt" && "$(dpkg-query -W -f '${db:Status-Status}\n' gn 2>/dev/null)" != "installed" ]] ||
+                   [[ "$TERMUX_APP_PACKAGE_MANAGER" = "pacman" && ! "$(pacman -Q gn 2>/dev/null)" ]]; then
 			echo "Package 'gn' is not installed."
 			echo "You can install it with"
 			echo
 			echo "  pkg install gn"
+			echo
+			echo "  pacman -S gn"
 			echo
 			exit 1
 		fi

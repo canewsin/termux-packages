@@ -1,45 +1,36 @@
-diff -uNr mupdf-1.18.0-source/Makefile mupdf-1.18.0-source.mod/Makefile
---- mupdf-1.18.0-source/Makefile	2020-10-07 13:35:03.000000000 +0300
-+++ mupdf-1.18.0-source.mod/Makefile	2021-08-05 19:47:26.364131551 +0300
-@@ -66,6 +66,14 @@
- WINDRES_CMD = $(QUIET_WINDRES) $(MKTGTDIR) ; $(WINDRES) $< $@
- OBJCOPY_CMD = $(QUIET_OBJCOPY) $(MKTGTDIR) ; $(LD) -r -b binary -z noexecstack -o $@ $<
+--- a/Makefile
++++ b/Makefile
+@@ -427,7 +429,7 @@
+ 	install -m 644 docs/*.html docs/*.css docs/*.png $(DESTDIR)$(docdir)
+ 	install -m 644 docs/examples/* $(DESTDIR)$(docdir)/examples
  
-+ifeq ($(shared),yes)
-+LINK_CMD = $(QUIET_LINK) $(MKTGTDIR) ; $(CC) $(LDFLAGS) -o $@ \
-+	$(filter-out %.$(SO),$^) \
-+	$(sort $(patsubst %,-L%,$(dir $(filter %.$(SO),$^)))) \
-+	$(patsubst lib%.$(SO),-l%,$(notdir $(filter %.$(SO),$^))) \
-+	$(LIBS)
-+endif
-+
- # --- Rules ---
+-install: install-libs install-apps install-docs
++install: install-libs install-tools install-docs install-shared-c install-shared-c++
  
- $(OUT)/%.a :
-@@ -321,7 +329,7 @@
- $(OUT)/example: docs/examples/example.c $(MUPDF_LIB) $(THIRD_LIB)
- 	$(LINK_CMD) $(CFLAGS) $(THIRD_LIBS)
- $(OUT)/multi-threaded: docs/examples/multi-threaded.c $(MUPDF_LIB) $(THIRD_LIB)
--	$(LINK_CMD) $(CFLAGS) $(THIRD_LIBS) -lpthread
-+	$(LINK_CMD) $(CFLAGS) $(THIRD_LIBS)
+ tarball:
+ 	bash scripts/archive.sh
+@@ -635,18 +635,17 @@ endif
  
- # --- Update version string header ---
+ install-shared-c: install-shared-check install-libs install-headers
  
-@@ -355,7 +363,7 @@
- tools: $(TOOL_APPS)
- apps: $(TOOL_APPS) $(VIEW_APPS)
+-install-shared-c++: install-shared-c c++
+-	install -m 644 platform/c++/include/mupdf/*.h $(DESTDIR)$(incdir)/mupdf
+-	install -m $(SO_INSTALL_MODE) $(OUT)/libmupdfcpp.$(SO)$(SO_VERSION) $(DESTDIR)$(libdir)/
++install-shared-c++: install-shared-check
++	install -vDm 644 platform/c++/include/mupdf/*.h -t $(DESTDIR)$(incdir)/mupdf
++	install -vDm $(SO_INSTALL_MODE) $(OUT)/libmupdfcpp.$(SO)$(SO_VERSION) -t $(DESTDIR)$(libdir)/
+ ifneq ($(OS),OpenBSD)
+ 	ln -sf libmupdfcpp.$(SO)$(SO_VERSION) $(DESTDIR)$(libdir)/libmupdfcpp.$(SO)
+ 	ln -sf libmupdfcpp.$(SO)$(SO_VERSION) $(DESTDIR)$(libdir)/libmupdfcpp.$(SO)$(SO_VERSION_MAJOR)
+ endif
  
--install: libs apps
-+install: libs tools
- 	install -d $(DESTDIR)$(incdir)/mupdf
- 	install -d $(DESTDIR)$(incdir)/mupdf/fitz
- 	install -d $(DESTDIR)$(incdir)/mupdf/pdf
-@@ -367,7 +375,7 @@
- 	install -m 644 $(INSTALL_LIBS) $(DESTDIR)$(libdir)
+-install-shared-python: install-shared-c++ python
+-	install -d $(DESTDIR)$(pydir)/mupdf
+-	install -m $(SO_INSTALL_MODE) $(OUT)/_mupdf.$(SO) $(DESTDIR)$(pydir)/mupdf
+-	install -m 644 $(OUT)/mupdf.py $(DESTDIR)$(pydir)/mupdf/__init__.py
++install-shared-python:
++	install -vDm $(SO_INSTALL_MODE) $(OUT)/_mupdf.$(SO) -t $(DESTDIR)$(pydir)/mupdf
++	install -vDm 644 $(OUT)/mupdf.py $(DESTDIR)$(pydir)/mupdf/__init__.py
  
- 	install -d $(DESTDIR)$(bindir)
--	install -m 755 $(TOOL_APPS) $(VIEW_APPS) $(DESTDIR)$(bindir)
-+	install -m 755 $(TOOL_APPS) $(DESTDIR)$(bindir)
+ else
  
- 	install -d $(DESTDIR)$(mandir)/man1
- 	install -m 644 docs/man/*.1 $(DESTDIR)$(mandir)/man1

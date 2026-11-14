@@ -1,5 +1,5 @@
---- ./deps/uv/src/unix/sysinfo-memory.c	2021-06-03 07:15:30.000000000 +0530
-+++ ./deps/uv/src/unix/sysinfo-memory.c.mod	2021-06-18 20:31:00.255642197 +0530
+--- a/deps/uv/src/unix/sysinfo-memory.c
++++ b/deps/uv/src/unix/sysinfo-memory.c
 @@ -25,6 +25,7 @@
  #include <stdint.h>
  #include <sys/sysinfo.h>
@@ -8,7 +8,7 @@
  uint64_t uv_get_free_memory(void) {
    struct sysinfo info;
  
-@@ -32,6 +33,7 @@
+@@ -32,6 +33,7 @@ uint64_t uv_get_free_memory(void) {
      return (uint64_t) info.freeram * info.mem_unit;
    return 0;
  }

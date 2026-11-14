@@ -2,9 +2,9 @@ TERMUX_PKG_HOMEPAGE=https://chezmoi.io
 TERMUX_PKG_DESCRIPTION="Manage your dotfiles across multiple machines"
 TERMUX_PKG_LICENSE="MIT"
 TERMUX_PKG_MAINTAINER="Henrik Grimler @Grimler91"
-TERMUX_PKG_VERSION=2.7.4
-TERMUX_PKG_SRCURL=https://github.com/twpayne/chezmoi/archive/v${TERMUX_PKG_VERSION}.tar.gz
-TERMUX_PKG_SHA256=71cdf60840a1674e929f9faa5220e0175077f5a6e72b58dcc5d1b17596aa3ae2
+TERMUX_PKG_VERSION="2.74.1"
+TERMUX_PKG_SRCURL=https://github.com/twpayne/chezmoi/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz
+TERMUX_PKG_SHA256=818984475f981bb79d516f144386d0f4aeb03f035bca3c6d6287da2bdae61829
 TERMUX_PKG_AUTO_UPDATE=true
 
 termux_step_make() {
@@ -29,13 +29,10 @@ termux_step_make_install() {
 		$TERMUX_PREFIX/share/zsh/site-functions \
 		$TERMUX_PREFIX/share/doc/chezmoi
 
-	install ${TERMUX_PKG_BUILDDIR}/src/github.com/twpayne/chezmoi/completions/chezmoi-completion.bash \
+	install -Dm600 ${TERMUX_PKG_BUILDDIR}/src/github.com/twpayne/chezmoi/completions/chezmoi-completion.bash \
 		$TERMUX_PREFIX/share/bash-completion/completions/chezmoi
-	install ${TERMUX_PKG_BUILDDIR}/src/github.com/twpayne/chezmoi/completions/chezmoi.fish \
-		$TERMUX_PREFIX/share/fish/completions/chezmoi.fish
-	install ${TERMUX_PKG_BUILDDIR}/src/github.com/twpayne/chezmoi/completions/chezmoi.zsh \
+	install -Dm600 ${TERMUX_PKG_BUILDDIR}/src/github.com/twpayne/chezmoi/completions/chezmoi.fish \
+		$TERMUX_PREFIX/share/fish/vendor_completions.d/chezmoi.fish
+	install -Dm600 ${TERMUX_PKG_BUILDDIR}/src/github.com/twpayne/chezmoi/completions/chezmoi.zsh \
 		$TERMUX_PREFIX/share/zsh/site-functions/_chezmoi
-
-	install ${TERMUX_PKG_BUILDDIR}/src/github.com/twpayne/chezmoi/docs/{FAQ,HOWTO,QUICKSTART,REFERENCE,TEMPLATING}.md \
-		$TERMUX_PREFIX/share/doc/chezmoi/
 }

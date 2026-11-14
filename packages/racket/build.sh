@@ -1,17 +1,23 @@
 TERMUX_PKG_HOMEPAGE=https://racket-lang.org
 TERMUX_PKG_DESCRIPTION="Full-spectrum programming language going beyond Lisp and Scheme"
 TERMUX_PKG_LICENSE="GPL-3.0, LGPL-3.0"
-TERMUX_PKG_MAINTAINER="Leonid Pliushch <leonid.pliushch@gmail.com>"
-TERMUX_PKG_VERSION=7.4
-TERMUX_PKG_REVISION=6
+TERMUX_PKG_MAINTAINER="@termux"
+TERMUX_PKG_VERSION="9.3"
 TERMUX_PKG_SRCURL=https://www.cs.utah.edu/plt/installers/${TERMUX_PKG_VERSION}/racket-minimal-${TERMUX_PKG_VERSION}-src-builtpkgs.tgz
-TERMUX_PKG_SHA256=c819608cee733c98241e329274f3567956baaaa7283e061e45342f533bd9a51b
+TERMUX_PKG_SHA256=3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295
+TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_DEPENDS="libffi, libiconv"
 TERMUX_PKG_NO_DEVELSPLIT=true
 TERMUX_PKG_HOSTBUILD=true
 
+TERMUX_PKG_EXTRA_HOSTBUILD_CONFIGURE_ARGS="
+--enable-bc
+--enable-bconly
+"
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
---enable-racket=$TERMUX_PKG_HOSTBUILD_DIR/racket/racketcgc
+--enable-bc
+--enable-bconly
+--enable-racket=$TERMUX_PKG_HOSTBUILD_DIR/bc/racketcgc
 --enable-libs
 --disable-shared
 --disable-gracket
@@ -20,11 +26,19 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 termux_step_host_build() {
 	"$TERMUX_PKG_SRCDIR"/src/configure \
 		$TERMUX_PKG_EXTRA_HOSTBUILD_CONFIGURE_ARGS
-	make -j "$TERMUX_MAKE_PROCESSES"
+	make -j "$TERMUX_PKG_MAKE_PROCESSES"
 }
 
 termux_step_pre_configure() {
-	CPPFLAGS+=" -I$TERMUX_PKG_SRCDIR/src/racket/include -I$TERMUX_PKG_BUILDDIR/racket"
+	CPPFLAGS+=" -I$TERMUX_PKG_SRCDIR/src/bc/include -I$TERMUX_PKG_BUILDDIR/bc"
 	LDFLAGS+=" -liconv -llog"
 	export TERMUX_PKG_SRCDIR="$TERMUX_PKG_SRCDIR/src"
+}
+
+# See: https://github.com/termux/termux-packages/issues/25761
+termux_step_configure() {
+	"$TERMUX_PKG_SRCDIR"/configure \
+		--prefix="$TERMUX_PREFIX" \
+		--host=$TERMUX_HOST_PLATFORM \
+		$TERMUX_PKG_EXTRA_CONFIGURE_ARGS
 }
